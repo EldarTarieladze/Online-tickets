@@ -5,9 +5,11 @@ import { Ticket } from 'src/models/ticket.model';
 
 @Injectable()
 export class EventsService {
-    constructor(@Inject(EVENTS_REPOSITORY) private readonly eventsRepository: typeof Events){}
+  constructor(
+    @Inject(EVENTS_REPOSITORY) private readonly eventsRepository: typeof Events,
+  ) {}
 
-    async getEvents(){
-        return await this.eventsRepository.findAll({include: Ticket})
-    }
+  async getEvents(): Promise<Events[]> {
+    return await this.eventsRepository.findAll({ include: Ticket });
+  }
 }

@@ -1,40 +1,54 @@
-import { BelongsTo, Column, DataType, ForeignKey, Model,  Table } from 'sequelize-typescript';
+import { ApiProperty } from '@nestjs/swagger';
+import {
+  BelongsTo,
+  Column,
+  DataType,
+  ForeignKey,
+  Model,
+  Table,
+} from 'sequelize-typescript';
 import { Events } from './event.model';
 import { Reservation } from './reservation.model';
 
-@Table({ tableName: 'tickets',timestamps: true })
+@Table({ tableName: 'tickets', timestamps: true })
 export class Ticket extends Model<Ticket> {
-
   @Column({
     type: DataType.STRING,
-    allowNull: false
+    allowNull: false,
   })
   name: string;
 
   @Column({
     type: DataType.INTEGER,
-    allowNull: false
+    allowNull: false,
   })
-  rowNumber: number
+  rowNumber: number;
 
   @Column({
-    type: DataType.ARRAY(DataType.ENUM({values: ['AVOID_ONE', 'ALL_TOGETHER', 'EVEN']})),
-    allowNull: false
+    type: DataType.INTEGER,
+    allowNull: false,
+  })
+  price: number;
+
+  @Column({
+    type: DataType.ARRAY(
+      DataType.ENUM({ values: ['AVOID_ONE', 'ALL_TOGETHER', 'EVEN'] }),
+    ),
+    allowNull: false,
   })
   sellingOptions: string[];
 
   @ForeignKey(() => Events)
-  @Column({type: DataType.INTEGER})
-  eventId: number
+  @Column({ type: DataType.INTEGER })
+  eventId: number;
 
   @BelongsTo(() => Events)
-  event: Events
+  event: Events;
 
   @ForeignKey(() => Reservation)
-  @Column({type: DataType.INTEGER})
-  reservationId: number
+  @Column({ type: DataType.INTEGER })
+  reservationId: number;
 
   @BelongsTo(() => Reservation)
-  reservation: Reservation
-
+  reservation: Reservation;
 }

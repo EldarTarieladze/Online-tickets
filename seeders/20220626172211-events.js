@@ -42,10 +42,11 @@ module.exports = {
         for (let k = 0; k < 20; k++) {
           ticket.push({
             name: `Ticket - ${k}`,
-            rowNumber: random(min, max),
+            rowNumber: k / 10 <= 1 ? 5 : 6,
             sellingOptions: Sequelize.literal(
               `ARRAY['EVEN', 'ALL_TOGETHER']::"enum_tickets_sellingOptions"[]`,
             ),
+            price: 10,
             eventId: event.id,
             createdAt: new Date(),
             updatedAt: new Date(),
