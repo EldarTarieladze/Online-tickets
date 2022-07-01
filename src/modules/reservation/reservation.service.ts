@@ -1,15 +1,17 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   HttpException,
   HttpStatus,
   Inject,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/sequelize';
 import { Sequelize } from 'sequelize-typescript';
-import { Transaction } from 'sequelize/types';
+import { Op } from 'sequelize';
 import { Stripe } from 'stripe';
 
 import {
@@ -20,6 +22,8 @@ import {
 import { Reservation } from 'src/models/reservation.model';
 import { Ticket } from 'src/models/ticket.model';
 import { CreateReservationDto } from './dto/reservation.dto';
+import { FAILED, NOT_PAID, PAID, PROCESS, STRIPE_SUCCEEDED } from './constants';
+import { Cron, CronExpression, SchedulerRegistry } from '@nestjs/schedule';
 
 export enum sellingOptions {
   AVOID_ONE = 'AVOID_ONE',
@@ -40,7 +44,33 @@ export class ReservationService {
     private readonly reservationReopsitory: typeof Reservation,
     @Inject(TICKET_REPOSITORY) private readonly ticketRepository: typeof Ticket,
     @Inject(SEQUELIZE) private sequelize: Sequelize,
-  ) {}
+    private schedulerRegistry: SchedulerRegistry
+  ) { }
+
+
+  // Cron job for expired reservation
+  @Cron(CronExpression.EVERY_30_SECONDS, { name: 'reservations' })
+  async deleteExpiredReservations() {
+    const timeToExpired = process.env.EXPIRED_TIME
+    const deletedReservationCount = await this.reservationReopsitory.destroy({
+      where: {
+        paymentStatus: [FAILED, NOT_PAID],
+        [Op.and]: [
+          Sequelize.literal(`created_at < NOW() - INTERVAL '${timeToExpired}'`),
+        ]
+      }
+    })
+    console.log(`${deletedReservationCount} expired reservation has been deleted`)
+
+  }
+
+  async getReservation() {
+    const reservations = await this.reservationReopsitory.findAll({
+      include: Ticket,
+    });
+    return reservations;
+  }
+
   async createReservation(dto: CreateReservationDto) {
     const trans = await this.sequelize.transaction();
     try {
@@ -54,17 +84,22 @@ export class ReservationService {
           transaction: trans,
         });
         if (!ticket) {
-          console.log(1);
           throw new HttpException(
             { message: `ticket with the Id ${tId} is not available!` },
             HttpStatus.NOT_FOUND,
           );
         }
-
         if (ticket.reservationId) {
           throw new HttpException(
             { message: `Ticket with Id ${tId} is already reserved!` },
             HttpStatus.FORBIDDEN,
+          );
+        }
+
+        if (ticket.eventId !== dto.eventId) {
+          throw new HttpException(
+            { message: `Ticket with Id ${tId} is for another event!` },
+            HttpStatus.BAD_REQUEST,
           );
         }
         priceOfAllTicket += ticket.price;
@@ -78,6 +113,7 @@ export class ReservationService {
           for await (const option of ticket.sellingOptions) {
             switch (option) {
               case sellingOptions.EVEN:
+                // The number of tickets must be even
                 if (lockTickets.length % 2 !== 0)
                   throw new HttpException(
                     {
@@ -88,6 +124,7 @@ export class ReservationService {
                 break;
 
               case sellingOptions.AVOID_ONE:
+                // The number of free seats in a specific row should not be 1
                 const availableTicket =
                   await this.ticketRepository.findAndCountAll({
                     where: {
@@ -107,6 +144,9 @@ export class ReservationService {
                   );
                 break;
               case sellingOptions.ALL_TOGETHER:
+                /* Sort ticket array by id for example [5,4,6,7] sorted [4,5,6,7]
+                   then check if( 7-4 !== 3)
+                */
                 ticketArray.sort(({ id: a }, { id: b }) => a - b);
                 if (
                   ticketArray[ticketArray.length - 1].id - ticketArray[0].id !==
@@ -121,6 +161,7 @@ export class ReservationService {
                 }
                 break;
               default:
+                throw new InternalServerErrorException({ message: 'Not valid selling options' })
                 break;
             }
           }
@@ -145,78 +186,73 @@ export class ReservationService {
       throw error;
     }
   }
-  async getReservation() {
-    const reservations = await this.reservationReopsitory.findAll({
-      include: Ticket,
-    });
-    return reservations;
-  }
+
   timeDifference(createdAt: string): boolean {
     let reservationCreatedAt = new Date(createdAt);
     let currentTime = new Date();
-    console.log({ reservationCreatedAt, currentTime });
     let difference = currentTime.getTime() - reservationCreatedAt.getTime();
 
     // 900000 = 15min
     return difference > 900000 ? false : true;
   }
+
   async paymentReservation(reservationId: number) {
-    const trans = await this.sequelize.transaction();
+    let trans: any;
     try {
+      trans = await this.sequelize.transaction();
       const reservation = await this.reservationReopsitory.findByPk(
         reservationId,
         { transaction: trans, lock: true, skipLocked: true },
       );
 
       if (!reservation)
-        throw new BadRequestException({ message: 'Reservation not found' });
+        throw new NotFoundException({ message: 'Reservation not found' });
 
       const difference = this.timeDifference(reservation.createdAt);
       if (!difference)
         throw new ForbiddenException({
           message: 'The reservation has expired',
         });
-      const body = {
-        amount: reservation.price,
-        description: 'Ticket Reservation',
-        currency: 'usd',
-        customer: reservation.userId,
-      };
+      if (reservation.paymentStatus === 'PROCESS') throw new ConflictException({ message: 'Reservation is already in process' })
+      if (reservation.paymentStatus === 'PAID') throw new BadRequestException({ message: 'Reservation is already PAID' })
       const stripe = new Stripe(process.env.STRIPE_API_SECRET_KEY, {
         apiVersion: '2020-08-27',
       });
-      const paymentMethod = await stripe.paymentMethods.create({
-        type: 'card',
-        card: {
-          number: '4242424242424242',
-          exp_month: 6,
-          exp_year: 2071,
-          cvc: '314',
-        },
-      });
-      console.log(paymentMethod, paymentMethod.id);
-      const stripeReg = await stripe.customers.create({
-        email: 'tt@gmail.com',
-        description: 'asdaa',
-      });
-      const attach = await stripe.paymentMethods.attach(paymentMethod.id, {
-        customer: stripeReg.id,
-      });
-      console.log(attach);
-      //fix
+
+      await this.reservationReopsitory.update({ paymentStatus: PROCESS }, {
+        where: {
+          id: reservation.id
+        }, transaction: trans
+      })
+      // static payment costumerID
       const payment = await stripe.paymentIntents.create({
         amount: reservation.price * 100,
         currency: 'USD',
         description: 'Ticket Reservation',
-        customer: stripeReg.id,
+        customer: process.env.STRIPE_STATIC_COSTUMER_ID,
         payment_method_types: ['card'],
         capture_method: 'automatic',
         confirm: true,
       });
-      console.log(payment);
-      throw new BadRequestException({ message: 'saa' });
+      if (payment.status !== STRIPE_SUCCEEDED) {
+        await this.reservationReopsitory.update({ paymentStatus: FAILED }, {
+          where: {
+            id: reservation.id
+          },
+          transaction: trans
+        })
+        await trans.commit()
+        throw new HttpException({ message: 'Payment is unsuccessful' }, HttpStatus.BAD_REQUEST)
+      }
+      await this.reservationReopsitory.update({ paymentStatus: PAID }, {
+        where: {
+          id: reservation.id
+        }, transaction: trans
+      })
+      await trans.commit()
+      return { message: 'Payment completed successfully' }
     } catch (error) {
-      await trans.rollback();
+      if (trans?.finished !== 'commit') await trans.rollback();
       throw error;
     }
   }

@@ -1,16 +1,15 @@
 import { Controller, Get } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { AppService } from './app.service';
 
 @Controller()
+@ApiTags('HealthCeck')
 export class AppController {
-  constructor(private readonly appService: AppService) {}
+  constructor(private readonly appService: AppService) { }
 
-  @Get()
+  @Get('healthcheck')
   async getHello() {
-    return await this.appService.getHello();
+    return await this.appService.healthCheck();
   }
-  @Get('one')
-  async getone() {
-    return await this.appService.getOne();
-  }
+
 }

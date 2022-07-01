@@ -2,7 +2,7 @@ import { Column, DataType, HasMany, Model, Sequelize, Table } from 'sequelize-ty
 import { Ticket } from './ticket.model';
 
 
-@Table({tableName: 'events', freezeTableName: true, timestamps: true})
+@Table({ tableName: 'events', freezeTableName: true, timestamps: true })
 export class Events extends Model<Events> {
   @Column({
     type: DataType.STRING,

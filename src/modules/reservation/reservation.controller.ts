@@ -27,7 +27,7 @@ export interface ITypeRes {
 @Controller('reservation')
 @ApiTags('Reservation')
 export class ReservationController {
-  constructor(private readonly reservationService: ReservationService) {}
+  constructor(private readonly reservationService: ReservationService) { }
 
   @Post('create')
   @ApiCreatedResponse({ type: IResponseCreateReservationDto })
@@ -40,6 +40,7 @@ export class ReservationController {
     return await this.reservationService.getReservation();
   }
   @Post('payment/:reservationId')
+  @ApiCreatedResponse({ type: IResponseCreateReservationDto })
   async paymentReservation(
     @Param('reservationId', new ParseIntPipe()) reservationId: number,
   ) {

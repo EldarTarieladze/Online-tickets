@@ -49,6 +49,7 @@ export class Ticket extends Model<Ticket> {
   @Column({ type: DataType.INTEGER })
   reservationId: number;
 
-  @BelongsTo(() => Reservation)
+  @BelongsTo(() => Reservation, { onDelete: 'SET NULL' })
   reservation: Reservation;
+  id: any;
 }

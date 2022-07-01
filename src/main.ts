@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common';
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { Response } from 'express';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -24,12 +23,11 @@ async function bootstrap() {
     .setTitle('TicketWorld')
     .setDescription('The TicketWorld API description')
     .setVersion('1.0')
-    .addTag('TicketWorld')
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/swagger', app, document);
-  await app.listen(3000, () => {
-    console.log(`server running at PORT = ${3000}`);
+  await app.listen(process.env.PORT || 3000, () => {
+    console.log(`server running at PORT  ${process.env.PORT}`);
   });
 }
 bootstrap();

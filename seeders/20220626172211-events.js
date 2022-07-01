@@ -37,14 +37,15 @@ module.exports = {
       const max = 6;
       const random = (min, max) =>
         Math.floor(Math.random() * (max - min)) + min;
-      console.log(events);
       events[0].map((event) => {
         for (let k = 0; k < 20; k++) {
           ticket.push({
-            name: `Ticket - ${k}`,
+            name: `Ticket - ${k + 1}`,
             rowNumber: k / 10 <= 1 ? 5 : 6,
             sellingOptions: Sequelize.literal(
-              `ARRAY['EVEN', 'ALL_TOGETHER']::"enum_tickets_sellingOptions"[]`,
+              k % 2 === 0
+                ? `ARRAY['EVEN', 'ALL_TOGETHER']::"enum_tickets_sellingOptions"[]`
+                : `ARRAY['AVOID_ONE', 'ALL_TOGETHER']::"enum_tickets_sellingOptions"[]`,
             ),
             price: 10,
             eventId: event.id,
@@ -53,7 +54,6 @@ module.exports = {
           });
         }
       });
-      console.log(ticket);
       await queryInterface.bulkInsert('tickets', ticket);
     } catch (err) {
       throw err;

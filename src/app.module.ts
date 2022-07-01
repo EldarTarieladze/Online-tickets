@@ -7,12 +7,14 @@ import { EventsModule } from './modules/event/events.module';
 import { TicketsService } from './modules/ticket/tickets.service';
 import { TicketsModule } from './modules/ticket/tickets.module';
 import { ReservationModule } from './modules/reservation/reservation.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ScheduleModule.forRoot(),
     ReservationModule,
     DatabaseModule,
     EventsModule,
@@ -21,4 +23,4 @@ import { ReservationModule } from './modules/reservation/reservation.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

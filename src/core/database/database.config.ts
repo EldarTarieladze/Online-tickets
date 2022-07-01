@@ -1,3 +1,4 @@
+import { ParseBoolPipe } from '@nestjs/common';
 import * as dotenv from 'dotenv';
 import { IDatabaseConfig } from './interfaces/dbConfig.interface';
 
@@ -11,6 +12,7 @@ export const databaseConfig: IDatabaseConfig = {
         host: process.env.DB_HOST,
         port: process.env.DB_PORT,
         dialect: process.env.DB_DIALECT,
+        logging: process.env.DB_LOGGING === 'true' ? true : false
     },
     test: {
         username: process.env.DB_USER,
@@ -19,6 +21,7 @@ export const databaseConfig: IDatabaseConfig = {
         host: process.env.DB_HOST,
         port: process.env.DB_PORT,
         dialect: process.env.DB_DIALECT,
+        logging: process.env.DB_LOGGING === 'true' ? true : false
     },
     production: {
         username: process.env.DB_USER,
@@ -26,5 +29,6 @@ export const databaseConfig: IDatabaseConfig = {
         database: process.env.DB_NAME_PRODUCTION,
         host: process.env.DB_HOST,
         dialect: process.env.DB_DIALECT,
+        logging: process.env.DB_LOGGING === 'true' ? true : false
     },
 };

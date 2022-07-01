@@ -11,7 +11,7 @@ import {
 import { IResponseTicketDto } from 'src/modules/ticket/dto/ticket.dto';
 
 export class CreateReservationDto {
-  @ApiProperty({ description: 'array of tickets Ids' })
+  @ApiProperty({ description: 'array of tickets Ids', default: [1, 2, 3, 4] })
   @IsNotEmpty()
   @ArrayUnique()
   @IsArray()
@@ -20,10 +20,16 @@ export class CreateReservationDto {
   ticketIds: number[];
 
   @IsNotEmpty()
-  @ApiProperty()
+  @ApiProperty({ default: 1 })
   @Min(1)
   @IsNumber()
   userId: number;
+
+  @IsNotEmpty()
+  @ApiProperty({ default: 1 })
+  @Min(1)
+  @IsNumber()
+  eventId: number;
 }
 
 export class IResponseReservationDto {
