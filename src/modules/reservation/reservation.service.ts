@@ -149,7 +149,7 @@ export class ReservationService {
                 */
                 ticketArray.sort(({ id: a }, { id: b }) => a - b);
                 if (
-                  ticketArray[ticketArray.length - 1].id - ticketArray[0].id !==
+                  ticketArray[ticketArray.length - 1].rowNumber - ticketArray[0].rowNumber !==
                   ticketArray.length - 1
                 ) {
                   throw new HttpException(
